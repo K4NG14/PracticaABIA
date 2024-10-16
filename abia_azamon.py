@@ -3,7 +3,7 @@ from random import Random
 from typing import List
 
 """
-MUY IMPORTANTE:
+MUY ITANTE:
 ESTE FICHERO NO DEBE SER MODIFICADO NI ENTREGADO JUNTO A LA PRÁCTICA,
 ÚNICAMENTE DEBE SER IMPORTADO (import abia_azamon)
 """
