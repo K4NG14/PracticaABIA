@@ -6,7 +6,7 @@ from azamon_operators import BinPackingOperator
 from azamon_state import StateRepresentation
 
 
-class BinPackingProblem(Problem):
+class Azamon(Problem):
     def __init__(self, initial_state: StateRepresentation):
         super().__init__(initial_state)
 

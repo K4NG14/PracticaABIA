@@ -4,7 +4,7 @@ from typing import List, Set, Generator
 
 from azamon_operators import BinPackingOperator, MoveParcel, SwapParcels
 from azamon_problem_parameters import ProblemParameters
-
+from abia_azamon import *
 
 class StateRepresentation(object):
     def __init__(self, params: ProblemParameters, v_c: List[Set[int]]):
@@ -27,7 +27,7 @@ class StateRepresentation(object):
                 return c_i
 
     def generate_actions(self) -> Generator[BinPackingOperator, None, None]:
-        # Primer calculem l'espai lliure de cada contenidor
+        # Primer calculem el PES lliure de cada contenidor
         free_spaces = []
         for c_i, parcels in enumerate(self.v_c):
             h_c_i = self.params.h_max
@@ -38,7 +38,7 @@ class StateRepresentation(object):
         for c_j, parcels in enumerate(self.v_c):
             for p_i in parcels:
                 for c_k in range(len(self.v_c)):
-                    # Condició: contenidor diferent i té espai lliure suficient
+                    # Condició: oferta diferent i té pes lliure suficient
                     if c_j != c_k and free_spaces[c_k] >= self.params.v_h[p_i]:
                         yield MoveParcel(p_i, c_j, c_k)
 
@@ -89,8 +89,46 @@ class StateRepresentation(object):
     def heuristic(self) -> float:
         return len(self.v_c)
 
+def inspeccionar_paquetes(l_paquetes):
+    # Dada una lista de paquetes, obtener información de
+    # cada uno: peso y prioridad.
+    peso_por_prioridad = [0.0, 0.0, 0.0]
+    paqs_por_prioridad = [0, 0, 0]
 
+    print(" -------- Paquetes  ------------")
+    for paquete in l_paquetes:
+        peso_por_prioridad[paquete.prioridad] += paquete.peso
+        paqs_por_prioridad[paquete.prioridad] += 1
+    for prioridad in range(3):
+        for paquete in l_paquetes:
+            if paquete.prioridad == prioridad:
+                print(paquete)
+    print("\n")
+    for prioridad in range(3):
+        print(f"Prioridad {prioridad}"
+              f" N paq={paqs_por_prioridad[prioridad]}"
+              f" Peso total= {peso_por_prioridad[prioridad]}")
+
+
+def inspeccionar_ofertas(l_ofertas):
+    # Dada una lista de ofertas, extraer información potencialmente
+    # interesante: número de ofertas y peso máximo, precio y días de
+    # cada oferta.
+    ofertas_por_prioridad = [0, 0, 0, 0, 0]
+    pesomax_por_prioridad = [0.0, 0.0, 0.0, 0.0, 0.0]
+
+    print("\n -------- Ofertas  ------------")
+    print(f"num ofertas = {len(l_ofertas)}\n")
+    for oferta in l_ofertas:
+        print(oferta)
+        ofertas_por_prioridad[oferta.dias - 1] += 1
+        dia = oferta.dias - 1
+        pesomax_por_prioridad[dia] += oferta.pesomax
+    print("\n")
+    for dia in range(5):
+        print(f"Dia {dia + 1} N ofertas={ofertas_por_prioridad[dia]}"
+              f" Peso maximo= {pesomax_por_prioridad[dia]}")
+    print()
+    
 def generate_initial_state(params: ProblemParameters) -> StateRepresentation:
-    assert (params.p_max <= params.c_max)
-    v_c = [{p_i} for p_i in range(params.p_max)]
-    return StateRepresentation(params, v_c)
+    camions = [0,0,0]

@@ -1,12 +1,26 @@
 from typing import List
+from abia_azamon import random_ofertas,random_paquetes,Paquete,Oferta
 
 
 class ProblemParameters(object):
-    def __init__(self, h_max: int, v_h: List[int], p_max: int, c_max: int):
-        self.h_max = h_max  # Alçada màxima de tots els contenidors
-        self.v_h = v_h      # Alçades de cada paquet, lista de enteros
-        self.p_max = p_max  # Màxim número de paquets
-        self.c_max = c_max  # Màxim número de contenidors
+    def __init__(self, ofertas = List[Oferta], packages = List[Paquete]):
+        self.ofertas = ofertas  # ofertas de transporte
+        self.packages = packages # paquetes a enviar
+        
 
     def __repr__(self):
-        return f"Params(h_max={self.h_max}, v_h={self.v_h}, p_max={self.p_max}, c_max={self.c_max})"
+        return f"Params(ofertas={self.ofertas}, packages={self.packages})"
+    
+if __name__ == '__main__':
+    npaq = int(input("Numero de paquetes:"))
+    semilla = int(input("Semilla aleatoria: "))
+    paquetes = random_paquetes(npaq, semilla)
+    ofertas = random_ofertas(paquetes, 1.2, 1234)
+    problema = ProblemParameters(ofertas,paquetes)
+    print(paquetes[0].peso)
+    
+
+
+    
+        
+    

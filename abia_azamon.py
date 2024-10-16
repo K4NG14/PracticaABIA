@@ -95,6 +95,7 @@ def random_paquetes(npaq: int, seed: int) -> List[Paquete]:
     return list_paquetes
 
 
+
 def random_ofertas(list_paquetes: List[Paquete],
                    proporcion: float,
                    seed: int) \
@@ -157,6 +158,7 @@ copiar código de esta Sección 2.
 
 
 def inspeccionar_paquetes(l_paquetes):
+   
     # Dada una lista de paquetes, obtener información de
     # cada uno: peso y prioridad.
     peso_por_prioridad = [0.0, 0.0, 0.0]
@@ -248,10 +250,9 @@ def crear_asignacion_suboptima(l_paquetes, l_ofertas):
         if l_ofertas[id_oferta].pesomax < peso_por_oferta[id_oferta]:
             print("Esta situación no se debería dar. ¡Reportadlo!")
             raise RuntimeError
-
-
+        
 if __name__ == '__main__':
-    npaq = int(input("Numero de paquetes: "))
+    npaq = int(input("Numero de paquetes:"))
     semilla = int(input("Semilla aleatoria: "))
     paquetes = random_paquetes(npaq, semilla)
     ofertas = random_ofertas(paquetes, 1.2, 1234)
@@ -259,3 +260,4 @@ if __name__ == '__main__':
     inspeccionar_paquetes(paquetes)
     inspeccionar_ofertas(ofertas)
     crear_asignacion_suboptima(paquetes, ofertas)
+
