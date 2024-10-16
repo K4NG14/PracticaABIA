@@ -7,9 +7,14 @@ from azamon_problem_parameters import ProblemParameters
 from abia_azamon import *
 
 class StateRepresentation(object):
+    ##################################### que es v_c????
     def __init__(self, params: ProblemParameters, v_c: List[Set[int]]):
         self.params = params
         self.v_c = v_c
+    
+        initial_state = generate_initial_state(params)
+        super.__init__(initial_state)
+        
 
     def copy(self) -> StateRepresentation:
         # Afegim el copy per cada set!
@@ -131,4 +136,8 @@ def inspeccionar_ofertas(l_ofertas):
     print()
     
 def generate_initial_state(params: ProblemParameters) -> StateRepresentation:
-    camions = [0,0,0]
+    x = params.ofertas
+    print(x)    
+
+
+

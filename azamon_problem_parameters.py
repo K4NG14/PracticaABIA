@@ -1,5 +1,6 @@
 from typing import List
 from abia_azamon import random_ofertas,random_paquetes,Paquete,Oferta
+from azamon_state import StateRepresentation
 
 
 class ProblemParameters(object):
@@ -17,7 +18,8 @@ if __name__ == '__main__':
     paquetes = random_paquetes(npaq, semilla)
     ofertas = random_ofertas(paquetes, 1.2, 1234)
     problema = ProblemParameters(ofertas,paquetes)
-    print(paquetes[0].peso)
+
+    node = StateRepresentation(problema)
     
 
 
