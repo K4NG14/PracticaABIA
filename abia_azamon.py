@@ -229,10 +229,8 @@ def crear_asignacion_suboptima(l_paquetes, l_ofertas):
             while not asignable(l_paquetes[id_paquete], l_ofertas[oferta_potencial]):
                 id_oferta_potencial = rng_asig.randint(0, len(copia_ofertas) - 1)
                 oferta_potencial = copia_ofertas[id_oferta_potencial]
-            if l_paquetes[id_paquete].peso + peso_por_oferta[oferta_potencial] \
-                    <= l_ofertas[oferta_potencial].pesomax:
-                peso_por_oferta[oferta_potencial] = peso_por_oferta[oferta_potencial] \
-                                                    + l_paquetes[id_paquete].peso
+            if l_paquetes[id_paquete].peso + peso_por_oferta[oferta_potencial] <= l_ofertas[oferta_potencial].pesomax:
+                peso_por_oferta[oferta_potencial] = peso_por_oferta[oferta_potencial]  + l_paquetes[id_paquete].peso
                 oferta_por_paquete[id_paquete] = oferta_potencial
                 paquete_asignado = True
                 print(f"Paq= {id_paquete} Env={oferta_potencial}")
@@ -243,14 +241,19 @@ def crear_asignacion_suboptima(l_paquetes, l_ofertas):
         print(f"Paq= {id_paquete} Env={oferta_por_paquete[id_paquete]}"
               f" P={l_paquetes[id_paquete].prioridad}"
               f" D={l_ofertas[oferta_por_paquete[id_paquete]].dias}")
+    coste_total=0
     for id_oferta in range(len(l_ofertas)):
         print(f"Env= {id_oferta}"
               f" Weight={peso_por_oferta[id_oferta]}"
-              f" MXweight={l_ofertas[id_oferta].pesomax}")
+              f" MXweight={l_ofertas[id_oferta].pesomax}"
+              f" Price={l_ofertas[id_oferta].precio}"
+              f" Dias={l_ofertas[id_oferta].dias}")
+        
+        coste_total = coste_total + peso_por_oferta[id_oferta]*l_ofertas[id_oferta].precio
         if l_ofertas[id_oferta].pesomax < peso_por_oferta[id_oferta]:
             print("Esta situación no se debería dar. ¡Reportadlo!")
             raise RuntimeError
-        
+    print(coste_total)
 if __name__ == '__main__':
     npaq = int(input("Numero de paquetes:"))
     semilla = int(input("Semilla aleatoria: "))

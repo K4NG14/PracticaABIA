@@ -7,24 +7,24 @@ from azamon_problem_parameters import ProblemParameters
 from abia_azamon import *
 
 class StateRepresentation(object):
-    def __init__(self, params: ProblemParameters, v_c: List[Set[int]]):
+    def __init__(self, params: ProblemParameters, v_o: List[Set[int]]):
         self.params = params
-        self.v_c = v_c
+        self.v_o = v_o
 
     def copy(self) -> StateRepresentation:
         # Afegim el copy per cada set!
-        v_c_copy = [set_i.copy() for set_i in self.v_c]
-        return StateRepresentation(self.params, v_c_copy)
+        v_o_copy = [set_i.copy() for set_i in self.v_o]
+        return StateRepresentation(self.params, v_o_copy)
 
     def __repr__(self) -> str:
-        return f"v_c={str(self.v_c)} | {self.params}"
+        return f"v_o={str(self.v_o)} | {self.params}"
 
-    # Utilitzarem aquesta funció auxiliar per trobar el contenidor
+    # Utilitzarem aquesta funció auxiliar per trobar l'oferta
     # que conté un paquet determinat
-    def find_container(self, p_i: int) -> int:
-        for c_i in range(len(self.v_c)):
-            if p_i in self.v_c[c_i]:
-                return c_i
+    def find_offer(self, p_i: int) -> int:
+        for o_i in range(len(self.v_o)):
+            if p_i in self.v_o[o_i]:
+                return o_i
 
     def generate_actions(self) -> Generator[BinPackingOperator, None, None]:
         # Primer calculem el PES lliure de cada contenidor
@@ -89,46 +89,101 @@ class StateRepresentation(object):
     def heuristic(self) -> float:
         return len(self.v_c)
 
-def inspeccionar_paquetes(l_paquetes):
-    # Dada una lista de paquetes, obtener información de
-    # cada uno: peso y prioridad.
-    peso_por_prioridad = [0.0, 0.0, 0.0]
-    paqs_por_prioridad = [0, 0, 0]
 
-    print(" -------- Paquetes  ------------")
-    for paquete in l_paquetes:
-        peso_por_prioridad[paquete.prioridad] += paquete.peso
-        paqs_por_prioridad[paquete.prioridad] += 1
-    for prioridad in range(3):
-        for paquete in l_paquetes:
-            if paquete.prioridad == prioridad:
-                print(paquete)
-    print("\n")
-    for prioridad in range(3):
-        print(f"Prioridad {prioridad}"
-              f" N paq={paqs_por_prioridad[prioridad]}"
-              f" Peso total= {peso_por_prioridad[prioridad]}")
-
-
-def inspeccionar_ofertas(l_ofertas):
-    # Dada una lista de ofertas, extraer información potencialmente
-    # interesante: número de ofertas y peso máximo, precio y días de
-    # cada oferta.
-    ofertas_por_prioridad = [0, 0, 0, 0, 0]
-    pesomax_por_prioridad = [0.0, 0.0, 0.0, 0.0, 0.0]
-
-    print("\n -------- Ofertas  ------------")
-    print(f"num ofertas = {len(l_ofertas)}\n")
-    for oferta in l_ofertas:
-        print(oferta)
-        ofertas_por_prioridad[oferta.dias - 1] += 1
-        dia = oferta.dias - 1
-        pesomax_por_prioridad[dia] += oferta.pesomax
-    print("\n")
-    for dia in range(5):
-        print(f"Dia {dia + 1} N ofertas={ofertas_por_prioridad[dia]}"
-              f" Peso maximo= {pesomax_por_prioridad[dia]}")
-    print()
-    
 def generate_initial_state(params: ProblemParameters) -> StateRepresentation:
-    camions = [0,0,0]
+    ofertas_x_paquete = crear_asignacion_1(params.packages, params.ofertas)
+    #print (ofertas_x_paquete)
+
+    v_o=[set() for _ in range(len(params.ofertas))]
+    print(v_o)
+    for paquete_id in range(len(params.packages)-1):
+        v_o[ofertas_x_paquete[paquete_id]].add(paquete_id)
+
+    return StateRepresentation(params, v_o)
+
+def crear_asignacion_1(l_paquetes, l_ofertas):
+    def asignable(prioridad, oferta):
+        return not ((prioridad != 0 or oferta.dias != 1)
+                    and (prioridad != 1 or oferta.dias != 2)
+                    and (prioridad != 1 or oferta.dias != 3)
+                    and (prioridad != 2 or oferta.dias != 4)
+                    and (prioridad != 2 or oferta.dias != 5))
+    
+    def precio_min(l_ofertas,l_id_ofertas, prioridad):
+        #print('precio_min=',l_ofertas,l_id_ofertas, prioridad)
+        precio_min = 10000
+        id_oferta_min = -1
+        for id_oferta in l_id_ofertas:
+            #print('hello')
+            #print(l_ofertas[id_oferta].precio,l_ofertas[id_oferta].dias, id_oferta)
+            #print(precio_min,l_ofertas[id_oferta].precio)
+            if precio_min > l_ofertas[id_oferta].precio and asignable(prioridad,l_ofertas[id_oferta]):
+                #print('bucle')
+                precio_min = l_ofertas[id_oferta].precio
+                id_oferta_min=id_oferta
+        #print (precio_min,id_oferta_min)
+        if id_oferta_min == -1:
+            print("Esta situación no se debería dar.")
+            raise RuntimeError
+        
+        return id_oferta_min
+
+    oferta_por_paquete = [0] * len(l_paquetes)
+    peso_por_oferta = [0.0] * len(l_ofertas)
+    copia_ofertas = []
+
+    for id_oferta in range(len(l_ofertas)):
+        copia_ofertas.append(id_oferta)   
+
+    #print(copia_ofertas)
+    for id_paquete in range(len(l_paquetes)):
+        
+        paquete_asignado = False   
+        while not paquete_asignado:
+            #print(id_paquete)
+            #print(l_paquetes[id_paquete].prioridad)
+            #print(l_paquetes[id_paquete].peso)
+            id_oferta_potencial = precio_min(l_ofertas,copia_ofertas,l_paquetes[id_paquete].prioridad)
+            oferta_potencial = id_oferta_potencial
+            
+            if l_paquetes[id_paquete].peso + peso_por_oferta[oferta_potencial] <= l_ofertas[oferta_potencial].pesomax:
+                peso_por_oferta[oferta_potencial] = peso_por_oferta[oferta_potencial]  + l_paquetes[id_paquete].peso
+                oferta_por_paquete[id_paquete] = oferta_potencial
+                paquete_asignado = True
+                print(f"Paq= {id_paquete} Env={oferta_potencial}")
+            else:
+                copia_ofertas.remove(id_oferta_potencial)
+    print()
+    for id_paquete in range(len(l_paquetes)):
+        print(f"Paq= {id_paquete} Env={oferta_por_paquete[id_paquete]}"
+              f" P={l_paquetes[id_paquete].prioridad}"
+              f" D={l_ofertas[oferta_por_paquete[id_paquete]].dias}")
+    coste_total = 0
+    for id_oferta in range(len(l_ofertas)):
+        print(f"Env= {id_oferta}"
+              f" Weight={peso_por_oferta[id_oferta]}"
+              f" MXweight={l_ofertas[id_oferta].pesomax}"
+              f" Price={l_ofertas[id_oferta].precio}"
+              f" Dias={l_ofertas[id_oferta].dias}")
+        
+        coste_total = coste_total + peso_por_oferta[id_oferta]*l_ofertas[id_oferta].precio
+        if l_ofertas[id_oferta].pesomax < peso_por_oferta[id_oferta]:
+            print("Esta situación no se debería dar. ¡Reportadlo!")
+            raise RuntimeError
+    print(coste_total)  
+    return oferta_por_paquete
+
+
+
+
+if __name__ == '__main__':
+    npaq = int(input("Numero de paquetes:"))
+    semilla = int(input("Semilla aleatoria: "))
+    paquetes = random_paquetes(npaq, semilla)
+    ofertas = random_ofertas(paquetes, 1.2, 1234)
+
+    inspeccionar_paquetes(paquetes)
+    inspeccionar_ofertas(ofertas)
+    problema = ProblemParameters(ofertas,paquetes)
+    print(generate_initial_state(problema))
+
