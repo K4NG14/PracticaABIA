@@ -16,6 +16,15 @@ class StateRepresentation(object):
         v_o_copy = [set_i.copy() for set_i in self.v_o]
         return StateRepresentation(self.params, v_o_copy)
 
+    def detalles(self) -> StateRepresentation:
+        for oferta_id in range(len(self.v_o)-1):
+            print(self.params.ofertas[oferta_id])
+            peso=0.0
+            for paquete_id in self.v_o[oferta_id]:
+                print(self.params.packages[paquete_id])
+                peso += self.params.packages[paquete_id].peso
+            print(peso)
+
     def __repr__(self) -> str:
         return f"v_o={str(self.v_o)} | {self.params}"
 
@@ -87,21 +96,34 @@ class StateRepresentation(object):
         return new_state
 
     def heuristic(self) -> float:
-        return len(self.v_c)
-
+        return len(self.v_o)
+    
+    def calcular_cost(self):
+        cost = 0
+        for elem in range(len(self.v_o)):
+            for id_paq in self.v_o[elem]:
+                paq = self.params.packages[id_paq]
+                cost += paq.peso*self.params.ofertas[elem].precio
+                if paq.prioridad == 1:
+                    cost += 0.25*paq.peso
+                if paq.prioridad == 2:
+                    cost += 0.25*paq.peso*2
+        return cost
 
 def generate_initial_state(params: ProblemParameters) -> StateRepresentation:
-    ofertas_x_paquete = crear_asignacion_1(params.packages, params.ofertas)
-    #print (ofertas_x_paquete)
+    return StateRepresentation(params, crear_asignacion_2(params.packages,params.ofertas))
 
-    v_o=[set() for _ in range(len(params.ofertas))]
-    print(v_o)
-    for paquete_id in range(len(params.packages)-1):
-        v_o[ofertas_x_paquete[paquete_id]].add(paquete_id)
-
-    return StateRepresentation(params, v_o)
 
 def crear_asignacion_1(l_paquetes, l_ofertas):
+
+    def assignar1(lst,n_ofertas):
+        v_o=[set() for _ in range(n_ofertas)]
+        print(v_o)
+        
+        for paquete_id in range(len(lst)-1):
+            v_o[lst[paquete_id]].add(paquete_id)
+        return v_o
+    
     def asignable(prioridad, oferta):
         return not ((prioridad != 0 or oferta.dias != 1)
                     and (prioridad != 1 or oferta.dias != 2)
@@ -171,8 +193,56 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
             print("Esta situación no se debería dar. ¡Reportadlo!")
             raise RuntimeError
     print(coste_total)  
-    return oferta_por_paquete
 
+    v_o = assignar1(oferta_por_paquete, len(l_ofertas))
+    return v_o
+
+def crear_asignacion_2 (l_paq, l_ofe):  
+    def assignable (paq = Paquete, dies = int):
+       if paq.prioridad == 0:
+           return dies == 1
+       if paq.prioridad == 1:
+           return dies <= 3
+       if paq.prioridad == 2:
+           return dies <= 5
+
+    def ordenar(l_paq = list[Paquete]):
+        prio0 = []
+        prio1 = []
+        prio2 = []
+        for i in l_paq:
+            if i.prioridad == 0:
+                prio0.append(i)
+            if i.prioridad == 1:
+                prio1.append(i)
+            if i.prioridad == 2:
+                prio2.append(i)
+
+        prio0_ord = sorted(prio0, key=lambda Paquete: Paquete.peso, reverse=True)
+        prio1_ord = sorted(prio1, key=lambda Paquete: Paquete.peso, reverse=True)
+        prio2_ord = sorted(prio2, key=lambda Paquete: Paquete.peso, reverse=True)
+        return prio0_ord + prio1_ord + prio2_ord
+    
+    def copy(lst):
+        copia_lst = []
+        for id_lst in range(len(lst)):
+            copia_lst.append(lst[id_lst])
+        return copia_lst
+
+    def assignar(l_paquets = list[Paquete], l_ofe = list[Oferta]):
+        l_paq = ordenar(l_paquets)
+        lst = [set() for _ in range (len(l_ofe))]
+        for id_paquet in range(len(l_paq)):
+            for ofert in range(len(l_ofe)): 
+                if l_paq[id_paquet].peso <= l_ofe[ofert].pesomax and assignable(l_paq[id_paquet], l_ofe[ofert].dias):
+                    lst[ofert].add(id_paquet)
+                    l_ofe[ofert].pesomax -= l_paq[id_paquet].peso
+                    break
+        print(lst)
+        return lst
+    
+    v_o = assignar(l_paq, copy(l_ofe))
+    return v_o
 
 
 
@@ -185,5 +255,8 @@ if __name__ == '__main__':
     inspeccionar_paquetes(paquetes)
     inspeccionar_ofertas(ofertas)
     problema = ProblemParameters(ofertas,paquetes)
-    print(generate_initial_state(problema))
+    estado_inicial = generate_initial_state(problema)
+    print(estado_inicial)
+    print(estado_inicial.calcular_cost())
+    estado_inicial.detalles()
 
