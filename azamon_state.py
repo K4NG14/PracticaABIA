@@ -5,6 +5,8 @@ from typing import List, Set, Generator
 from azamon_operators import BinPackingOperator, MoveParcel, SwapParcels
 from azamon_problem_parameters import ProblemParameters
 from abia_azamon import *
+from copy import deepcopy
+
 
 class StateRepresentation(object):
     def __init__(self, params: ProblemParameters, v_o: List[Set[int]]):
@@ -95,8 +97,11 @@ class StateRepresentation(object):
 
         return new_state
 
-    def heuristic(self) -> float:
-        return len(self.v_o)
+    def heuristic1(self) -> float:
+        return self.calcular_cost()
+    
+    def heuristic2(self) -> float:
+        return self.calcular_cost()-self.happiness() #hace falta ponerle un peso a happiness
     
     def calcular_cost(self):
         cost = 0
@@ -109,9 +114,22 @@ class StateRepresentation(object):
                 if paq.prioridad == 2:
                     cost += 0.25*paq.peso*2
         return cost
+    def happiness(self):
+        happy = 0
+        for elem in range(len(self.v_o)):
+            for id_paq in self.v_o[elem]:
+                paq = self.params.packages[id_paq]
+                if paq.prioridad == 1:
+                    if self.params.ofertas[elem].dias == 1:
+                        happy+=1
+                if paq.prioridad == 2: 
+                    if self.params.ofertas[elem].dias < 4:
+                        happy+= 4-self.params.ofertas[elem].dias
+        return happy
+       
 
 def generate_initial_state(params: ProblemParameters) -> StateRepresentation:
-    return StateRepresentation(params, crear_asignacion_2(params.packages,params.ofertas))
+    return StateRepresentation(params, crear_asignacion_1(params.packages,params.ofertas))
 
 
 def crear_asignacion_1(l_paquetes, l_ofertas):
@@ -223,25 +241,24 @@ def crear_asignacion_2 (l_paq, l_ofe):
         prio2_ord = sorted(prio2, key=lambda Paquete: Paquete.peso, reverse=True)
         return prio0_ord + prio1_ord + prio2_ord
     
-    def copy(lst):
-        copia_lst = []
-        for id_lst in range(len(lst)):
-            copia_lst.append(lst[id_lst])
-        return copia_lst
 
     def assignar(l_paquets = list[Paquete], l_ofe = list[Oferta]):
         l_paq = ordenar(l_paquets)
-        lst = [set() for _ in range (len(l_ofe))]
+        l_ofe_copy= deepcopy(l_ofe)
+        #print(l_ofe is l_ofe_copy)
+        #print("******",l_ofe, l_ofe_copy)
+        lst = [set() for _ in range (len(l_ofe_copy))]
         for id_paquet in range(len(l_paq)):
-            for ofert in range(len(l_ofe)): 
-                if l_paq[id_paquet].peso <= l_ofe[ofert].pesomax and assignable(l_paq[id_paquet], l_ofe[ofert].dias):
+            for ofert in range(len(l_ofe_copy)): 
+                if l_paq[id_paquet].peso <= l_ofe_copy[ofert].pesomax and assignable(l_paq[id_paquet], l_ofe_copy[ofert].dias):
                     lst[ofert].add(id_paquet)
-                    l_ofe[ofert].pesomax -= l_paq[id_paquet].peso
+                    l_ofe_copy[ofert].pesomax -= l_paq[id_paquet].peso
                     break
+        #print("******",l_ofe, l_ofe_copy)
         print(lst)
         return lst
     
-    v_o = assignar(l_paq, copy(l_ofe))
+    v_o = assignar(l_paq, l_ofe)
     return v_o
 
 
@@ -258,5 +275,6 @@ if __name__ == '__main__':
     estado_inicial = generate_initial_state(problema)
     print(estado_inicial)
     print(estado_inicial.calcular_cost())
+    print(estado_inicial.happiness())
     estado_inicial.detalles()
 
