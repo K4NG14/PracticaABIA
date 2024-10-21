@@ -114,6 +114,7 @@ class StateRepresentation(object):
                 if paq.prioridad == 2:
                     cost += 0.25*paq.peso*2
         return cost
+   
     def happiness(self):
         happy = 0
         for elem in range(len(self.v_o)):
