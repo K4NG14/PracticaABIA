@@ -104,15 +104,17 @@ class StateRepresentation(object):
         return self.calcular_cost()-self.happiness() #hace falta ponerle un peso a happiness
     
     def calcular_cost(self):
+        print(self.v_o)
         cost = 0
         for elem in range(len(self.v_o)):
-            for id_paq in self.v_o[elem]:
-                paq = self.params.packages[id_paq]
-                cost += paq.peso*self.params.ofertas[elem].precio
-                if paq.prioridad == 1:
-                    cost += 0.25*paq.peso
-                if paq.prioridad == 2:
-                    cost += 0.25*paq.peso*2
+            if len(self.v_o[elem]) > 0:
+                for id_paq in self.v_o[elem]:
+                    cost += self.params.packages[id_paq].peso*self.params.ofertas[elem].precio
+                    if self.params.ofertas[elem].dias == 3 or self.params.ofertas[elem].dias == 4:
+                        cost += 0.25*self.params.packages[id_paq].peso
+                    if self.params.ofertas[elem].dias == 5:
+                        cost += 0.5*self.params.packages[id_paq].peso       
+        print("***************")          
         return cost
    
     def happiness(self):
@@ -139,7 +141,7 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
         v_o=[set() for _ in range(n_ofertas)]
         print(v_o)
         
-        for paquete_id in range(len(lst)-1):
+        for paquete_id in range(len(lst)):
             v_o[lst[paquete_id]].add(paquete_id)
         return v_o
     
@@ -191,10 +193,10 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
                 peso_por_oferta[oferta_potencial] = peso_por_oferta[oferta_potencial]  + l_paquetes[id_paquete].peso
                 oferta_por_paquete[id_paquete] = oferta_potencial
                 paquete_asignado = True
-                print(f"Paq= {id_paquete} Env={oferta_potencial}")
+                
             else:
                 copia_ofertas.remove(id_oferta_potencial)
-    print()
+    
     for id_paquete in range(len(l_paquetes)):
         print(f"Paq= {id_paquete} Env={oferta_por_paquete[id_paquete]}"
               f" P={l_paquetes[id_paquete].prioridad}"
@@ -262,8 +264,6 @@ def crear_asignacion_2 (l_paq, l_ofe):
     v_o = assignar(l_paq, l_ofe)
     return v_o
 
-
-
 if __name__ == '__main__':
     npaq = int(input("Numero de paquetes:"))
     semilla = int(input("Semilla aleatoria: "))
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     problema = ProblemParameters(ofertas,paquetes)
     estado_inicial = generate_initial_state(problema)
     print(estado_inicial)
-    print(estado_inicial.calcular_cost())
+    print("Coste sol inicial: " , estado_inicial.calcular_cost())
     print(estado_inicial.happiness())
-    estado_inicial.detalles()
+
 
