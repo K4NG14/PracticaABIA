@@ -41,7 +41,7 @@ class StateRepresentation(object):
         maxWeight = []
         for oferta_id in range(len(self.v_o)):
             maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
-        
+        print(maxWeight)
         free_spaces = maxWeight
 
         for oferta_id in range(len(self.v_o)):
@@ -69,35 +69,41 @@ class StateRepresentation(object):
                 #Generar los intercambios posibles entre los paquetes
                 for i in range(len(self.v_o)):
                     for p_id in self.v_o[i]:
-                        if paquete_id != p_id:
+                        if paquete_id != p_id and oferta_id != i:
                             if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso:
-                                yield SwapParcels(paquete_id, p_id)
+                                yield SwapParcels(paquete_id, p_id, oferta_id, i)
 
     def apply_action(self, action: BinPackingOperator) -> StateRepresentation:
         new_state = self.copy()
+
+
         if isinstance(action, MoveParcel):
             p_i = action.p_i
             c_j = action.c_j
             c_k = action.c_k
 
-            new_state.v_c[c_k].add(p_i)
-            new_state.v_c[c_j].remove(p_i)
+            new_state.v_o[c_k].add(p_i)
+            new_state.v_o[c_j].remove(p_i)
 
-            if len(new_state.v_c[c_j]) == 0:
-                del new_state.v_c[c_j]
+            print("MOVED ", p_i ,"-> Contenedor ", c_k, new_state.v_o[c_k],",", c_j, new_state.v_o[c_j])
+
 
         elif isinstance(action, SwapParcels):
             p_i = action.p_i
             p_j = action.p_j
 
-            c_i = new_state.find_container(p_i)
-            c_j = new_state.find_container(p_j)
+            c_i = action.c_i
+            c_j = action.c_j
 
-            new_state.v_c[c_i].add(p_j)
-            new_state.v_c[c_i].remove(p_i)
+            new_state.v_o[c_j].add(p_i)
+            new_state.v_o[c_i].remove(p_i)
 
-            new_state.v_c[c_j].add(p_i)
-            new_state.v_c[c_j].remove(p_j)
+            new_state.v_o[c_i].add(p_j)
+            new_state.v_o[c_j].remove(p_j)
+            
+
+            print("SWAPPED ", p_i, " y ", p_j ,"-> ", new_state.v_o[c_i], new_state.v_o[c_j])
+
 
         return new_state
 
@@ -288,9 +294,8 @@ if __name__ == '__main__':
     print("Coste sol inicial: " , estado_inicial.calcular_cost())
     print(estado_inicial.happiness())
     a = estado_inicial.generate_actions()
-
     for mov in a:
-        print(mov)
+        estado_inicial.apply_action(mov)
     
 
 
