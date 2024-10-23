@@ -40,11 +40,10 @@ class StateRepresentation(object):
     def generate_actions(self) -> Generator[BinPackingOperator, None, None]:
         maxWeight = []
         for oferta_id in range(len(self.v_o)):
-                #print("Oferta:",oferta_id, "pesa:" ,self.params.ofertas[oferta_id].pesomax)
-                maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
-        print(maxWeight)
-
+            maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
+        
         free_spaces = maxWeight
+
         for oferta_id in range(len(self.v_o)):
             for paquete_id in self.v_o[oferta_id]:
                 free_spaces[oferta_id][0] -= self.params.packages[paquete_id].peso
@@ -55,47 +54,24 @@ class StateRepresentation(object):
                 prioridad_paq = self.params.packages[paquete_id].prioridad
                 dias_paq = ()
                 if prioridad_paq == 0:
-                    dias_paq = (1)
+                    dias_paq = (1,)
                 if prioridad_paq == 1:
                     dias_paq = (1,2,3)
                 if prioridad_paq == 2:
                     dias_paq = (1,2,3,4,5)
-                print("El paquete ", paquete_id, "pesa", self.params.packages[paquete_id].peso , "prioridad", self.params.packages[paquete_id].prioridad , " cabe en el contenedor: ", end="")
+                
+                #Generar los movimientos posibles de los paquetes
                 for i in range(len(self.v_o)):
-                    if self.params.packages[paquete_id].peso < free_spaces[i][0] and self.params.ofertas[i].dias in dias_paq:
-                        print(i, end=" ")
-                        #yield MoveParcel(paquete_id,oferta_id,i)
-                print()        
-        """  # Primer calculem el PES lliure de cada contenidor
-            free_spaces = []
-            for c_i, parcels in enumerate(self.v_c):
-                h_c_i = self.params.h_max
-                for p_i in parcels:
-                    h_c_i = h_c_i - self.params.v_h[p_i]
-                free_spaces.append(h_c_i)
-            # Recorregut contenidor per contenidor per saber quins paquets podem moure
-            for c_j, parcels in enumerate(self.v_c):
-                for p_i in parcels:
-                    for c_k in range(len(self.v_c)):
-                        # Condició: oferta diferent i té pes lliure suficient
-                        if c_j != c_k and free_spaces[c_k] >= self.params.v_h[p_i]:
-                            yield MoveParcel(p_i, c_j, c_k)
+                    if self.params.packages[paquete_id].peso <= free_spaces[i][0] and self.params.ofertas[i].dias in dias_paq:
+                        if i != oferta_id:
+                            yield MoveParcel(paquete_id,oferta_id,i)   
 
-            # Intercanviar paquets
-            for p_i in range(self.params.p_max):
-                for p_j in range(self.params.p_max):
-                    if p_i != p_j:
-                        c_i = self.find_container(p_i)
-                        c_j = self.find_container(p_j)
-
-                        if c_i != c_j:
-                            h_p_i = self.params.v_h[p_i]
-                            h_p_j = self.params.v_h[p_j]
-
-                            # Condició: hi ha espai lliure suficient per fer l'intercanvi
-                            # (Espai lliure del contenidor + espai que deixa el paquet >= espai del nou paquet)
-                            if free_spaces[c_i] + h_p_i >= h_p_j and free_spaces[c_j] + h_p_j >= h_p_i:
-                            yield SwapParcels(p_i, p_j) """
+                #Generar los intercambios posibles entre los paquetes
+                for i in range(len(self.v_o)):
+                    for p_id in self.v_o[i]:
+                        if paquete_id != p_id:
+                            if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso:
+                                yield SwapParcels(paquete_id, p_id)
 
     def apply_action(self, action: BinPackingOperator) -> StateRepresentation:
         new_state = self.copy()
@@ -311,7 +287,10 @@ if __name__ == '__main__':
     print(estado_inicial)
     print("Coste sol inicial: " , estado_inicial.calcular_cost())
     print(estado_inicial.happiness())
-    estado_inicial.generate_actions()
+    a = estado_inicial.generate_actions()
+
+    for mov in a:
+        print(mov)
     
 
 
