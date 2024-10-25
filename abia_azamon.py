@@ -85,6 +85,8 @@ def random_paquetes(npaq: int, seed: int) -> List[Paquete]:
             peso = (rng.randint(0, 6) + 1) * 0.5 + 3.5
         else:
             peso = (rng.randint(0, 6) + 1) * 0.5 + 7.0
+            if peso > 10:
+                peso = 10
         rand_prioridad = rng.randint(0, 3)
         prioridad = 1
         if rand_prioridad == 0:

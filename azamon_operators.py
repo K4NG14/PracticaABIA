@@ -1,8 +1,8 @@
-class BinPackingOperator(object):
+class AzamonOperator(object):
     pass
 
 
-class MoveParcel(BinPackingOperator):
+class MoveParcel(AzamonOperator):
     def __init__(self, p_i: int, c_j: int, c_k: int):
         self.p_i = p_i
         self.c_j = c_j
@@ -12,7 +12,7 @@ class MoveParcel(BinPackingOperator):
         return f"Moure paquet {self.p_i} d'oferta {self.c_j} a oferta {self.c_k}"
 
 
-class SwapParcels(BinPackingOperator): # paso por una solucion peor si en vez de swap cambio uno y despues el otro.
+class SwapParcels(AzamonOperator): # paso por una solucion peor si en vez de swap cambio uno y despues el otro.
     def __init__(self, p_i: int, p_j: int, c_i: int, c_j: int):
         self.p_i = p_i
         self.p_j = p_j
@@ -21,3 +21,4 @@ class SwapParcels(BinPackingOperator): # paso por una solucion peor si en vez de
 
     def __repr__(self) -> str:
         return f"Intercanvia {self.p_i} i {self.p_j}"
+

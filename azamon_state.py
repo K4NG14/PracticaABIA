@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from aima . search import hill_climbing, simulated_annealing
+import random
+from cmath import log
 from typing import List, Set, Generator
 
-from azamon_operators import BinPackingOperator, MoveParcel, SwapParcels
+from azamon_operators import AzamonOperator, MoveParcel, SwapParcels
 from azamon_problem_parameters import ProblemParameters
 from abia_azamon import *
 from copy import deepcopy
@@ -37,17 +40,17 @@ class StateRepresentation(object):
             if p_i in self.v_o[o_i]:
                 return o_i
 
-    def generate_actions(self) -> Generator[BinPackingOperator, None, None]:
+    def generate_actions(self) -> Generator[AzamonOperator, None, None]:
         maxWeight = []
         for oferta_id in range(len(self.v_o)):
             maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
-        print(maxWeight)
+        #print(maxWeight)
         free_spaces = maxWeight
 
         for oferta_id in range(len(self.v_o)):
             for paquete_id in self.v_o[oferta_id]:
                 free_spaces[oferta_id][0] -= self.params.packages[paquete_id].peso
-        print(free_spaces)
+        #print(free_spaces)
 
         for oferta_id in range(len(self.v_o)):
             for paquete_id in self.v_o[oferta_id]:
@@ -70,10 +73,20 @@ class StateRepresentation(object):
                 for i in range(len(self.v_o)):
                     for p_id in self.v_o[i]:
                         if paquete_id != p_id and oferta_id != i:
-                            if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso:
-                                yield SwapParcels(paquete_id, p_id, oferta_id, i)
+                            prioridad_paq1 = self.params.packages[p_id].prioridad
+                            dias_paq1 = ()
+                            if prioridad_paq1 == 0:
+                                dias_paq1 = (1,)
+                            if prioridad_paq1 == 1:
+                                dias_paq1 = (1,2,3)
+                            if prioridad_paq1 == 2:
+                                dias_paq1 = (1,2,3,4,5) 
+                            
+                            if self.params.ofertas[i].dias in dias_paq and self.params.ofertas[oferta_id] in dias_paq1:
+                                if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso  :
+                                    yield SwapParcels(paquete_id, p_id, oferta_id, i)
 
-    def apply_action(self, action: BinPackingOperator) -> StateRepresentation:
+    def apply_action(self, action: AzamonOperator) -> StateRepresentation:
         new_state = self.copy()
 
 
@@ -85,7 +98,7 @@ class StateRepresentation(object):
             new_state.v_o[c_k].add(p_i)
             new_state.v_o[c_j].remove(p_i)
 
-            print("MOVED ", p_i ,"-> Contenedor ", c_k, new_state.v_o[c_k],",", c_j, new_state.v_o[c_j])
+            #print("MOVED ", p_i ,"-> Contenedor ", c_k, new_state.v_o[c_k],",", c_j, new_state.v_o[c_j])
 
 
         elif isinstance(action, SwapParcels):
@@ -102,19 +115,77 @@ class StateRepresentation(object):
             new_state.v_o[c_j].remove(p_j)
             
 
-            print("SWAPPED ", p_i, " y ", p_j ,"-> ", new_state.v_o[c_i], new_state.v_o[c_j])
-
-
+            #print("SWAPPED ", p_i, " y ", p_j ,"-> ", new_state.v_o[c_i], new_state.v_o[c_j])
         return new_state
+    def generate_one_action(self) -> Generator[AzamonOperator, None, None]:
+        # Primer calculem l'espai lliure de cada contenidor
+        free_spaces = []
+        for c_i, parcels in enumerate(self.v_c):
+            h_c_i = self.params.h_max
+            for p_i in parcels:
+                h_c_i = h_c_i - self.params.v_h[p_i]
+            free_spaces.append(h_c_i)
+
+        # Recorregut contenidor per contenidor per saber quins paquets podem moure
+        move_parcel_combinations = set()
+        for c_j, parcels in enumerate(self.v_c):
+            for p_i in parcels:
+                for c_k in range(len(self.v_c)):
+                    # Condició: contenidor diferent i té espai lliure suficient
+                    if c_j != c_k and free_spaces[c_k] >= self.params.v_h[p_i]:
+                        move_parcel_combinations.add((p_i, c_j, c_k))
+
+        # Intercanviar paquets
+        swap_parcels_combinations = set()
+        for p_i in range(self.params.p_max):
+            for p_j in range(self.params.p_max):
+                if p_i != p_j:
+                    c_i = self.find_container(p_i)
+                    c_j = self.find_container(p_j)
+
+                    if c_i != c_j:
+                        h_p_i = self.params.v_h[p_i]
+                        h_p_j = self.params.v_h[p_j]
+
+                        # Condició: hi ha espai lliure suficient per fer l'intercanvi
+                        # (Espai lliure del contenidor + espai que deixa el paquet >= espai del nou paquet)
+                        if free_spaces[c_i] + h_p_i >= h_p_j and free_spaces[c_j] + h_p_j >= h_p_i:
+                            swap_parcels_combinations.add((p_i, p_j))
+
+        n = len(move_parcel_combinations)
+        m = len(swap_parcels_combinations)
+        random_value = random.random()
+        if random_value < (n / (n + m)):
+            combination = random.choice(list(move_parcel_combinations))
+            yield MoveParcel(combination[0], combination[1], combination[2])
+        else:
+            combination = random.choice(list(swap_parcels_combinations))
+            yield SwapParcels(combination[0], combination[1])
 
     def heuristic1(self) -> float:
         return self.calcular_cost()
     
     def heuristic2(self) -> float:
-        return self.calcular_cost()-self.happiness() #hace falta ponerle un peso a happiness
+        return self.happiness() #hace falta ponerle un peso a happiness
     
+    def heuristic3(self) -> float:
+        h=0.0
+        for oferta_id in range(len(self.v_o)):
+            sum = 0.0
+            for paquete_id in self.v_o[oferta_id]:
+                sum += self.params.packages[paquete_id].peso
+                occupancy = sum/self.params.ofertas[oferta_id].pesomax
+                print(occupancy)
+            h+=(occupancy)*log(occupancy)
+            print(h)
+        return -h
+    
+    def heuristic4(self) -> float:
+        pass
+
+
     def calcular_cost(self):
-        print(self.v_o)
+        #print(self.v_o)
         cost = 0
         for elem in range(len(self.v_o)):
             if len(self.v_o[elem]) > 0:
@@ -124,7 +195,7 @@ class StateRepresentation(object):
                         cost += 0.25*self.params.packages[id_paq].peso
                     if self.params.ofertas[elem].dias == 5:
                         cost += 0.5*self.params.packages[id_paq].peso       
-        print("***************")          
+        #print("***************")          
         return cost
    
     def happiness(self):
@@ -139,19 +210,22 @@ class StateRepresentation(object):
                     if self.params.ofertas[elem].dias < 4:
                         happy+= 4-self.params.ofertas[elem].dias
         return happy
-       
+    
 
-def generate_initial_state(params: ProblemParameters,sol) -> StateRepresentation:
+
+def generate_initial_state(params: ProblemParameters, sol) -> StateRepresentation:
     if sol == 1:
         return StateRepresentation(params, crear_asignacion_1(params.packages,params.ofertas))
+    
     if sol == 2:
         return StateRepresentation(params, crear_asignacion_2(params.packages,params.ofertas))
+
 
 def crear_asignacion_1(l_paquetes, l_ofertas):
 
     def assignar1(lst,n_ofertas):
         v_o=[set() for _ in range(n_ofertas)]
-        print(v_o)
+        #print(v_o)
         
         for paquete_id in range(len(lst)):
             v_o[lst[paquete_id]].add(paquete_id)
@@ -169,14 +243,16 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
         precio_min = 10000
         id_oferta_min = -1
         for id_oferta in l_id_ofertas:
+            #print('antes de if',l_ofertas[id_oferta],id_oferta)
             if precio_min > l_ofertas[id_oferta].precio and asignable(prioridad,l_ofertas[id_oferta]):
                 #print('bucle')
+                l_ofertas[id_oferta].precio
                 precio_min = l_ofertas[id_oferta].precio
                 id_oferta_min=id_oferta
-        print (precio_min,id_oferta_min)
+        #print ('fuera del bucle',precio_min,id_oferta_min)
         if id_oferta_min == -1:
             print("Esta situación no se debería dar.")
-        
+            #raise ValueError
         return id_oferta_min
 
     oferta_por_paquete = [0] * len(l_paquetes)
@@ -196,7 +272,7 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
             #print(l_paquetes[id_paquete].peso)
             id_oferta_potencial = precio_min(l_ofertas,copia_ofertas,l_paquetes[id_paquete].prioridad)
             oferta_potencial = id_oferta_potencial
-            
+            #print('asigancion',l_ofertas[oferta_potencial],l_paquetes[id_paquete],peso_por_oferta[oferta_potencial] )
             if l_paquetes[id_paquete].peso + peso_por_oferta[oferta_potencial] <= l_ofertas[oferta_potencial].pesomax:
                 peso_por_oferta[oferta_potencial] = peso_por_oferta[oferta_potencial]  + l_paquetes[id_paquete].peso
                 oferta_por_paquete[id_paquete] = oferta_potencial
@@ -204,7 +280,7 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
                 
             else:
                 copia_ofertas.remove(id_oferta_potencial)
-    
+    """
     for id_paquete in range(len(l_paquetes)):
         print(f"Paq= {id_paquete} Env={oferta_por_paquete[id_paquete]}"
               f" P={l_paquetes[id_paquete].prioridad}"
@@ -222,7 +298,7 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
             print("Esta situación no se debería dar. ¡Reportadlo!")
             raise RuntimeError
     print(coste_total)  
-
+    """
     v_o = assignar1(oferta_por_paquete, len(l_ofertas))
     return v_o
 
@@ -278,24 +354,4 @@ def crear_asignacion_2 (l_paq, l_ofe):
             return lst
     v_o = assignar(l_paq, l_ofe)
     return v_o
-
-if __name__ == '__main__':
-    npaq = int(input("Numero de paquetes:"))
-    semilla = int(input("Semilla aleatoria: "))
-    paquetes = random_paquetes(npaq, semilla)
-    ofertas = random_ofertas(paquetes, 1.2, 1234)
-    sol = int(input("Solució inicial (1-Mikel, 2-Elias): "))
-
-    inspeccionar_paquetes(paquetes)
-    inspeccionar_ofertas(ofertas)
-    problema = ProblemParameters(ofertas,paquetes)
-    estado_inicial = generate_initial_state(problema, sol)
-    print(estado_inicial)
-    print("Coste sol inicial: " , estado_inicial.calcular_cost())
-    print(estado_inicial.happiness())
-    a = estado_inicial.generate_actions()
-    for mov in a:
-        estado_inicial.apply_action(mov)
-    
-
 
