@@ -23,18 +23,28 @@ if __name__ == '__main__':
     ofertas = random_ofertas(paquetes, 1.2, 1234)
     sol = int(input("Solució inicial (1-Mikel, 2-Elias): "))
     
-    start = timer()
-    inspeccionar_paquetes(paquetes)
-    inspeccionar_ofertas(ofertas)
+    
+    #inspeccionar_paquetes(paquetes)
+    #inspeccionar_ofertas(ofertas)
     problema = ProblemParameters(ofertas,paquetes)
+    start = timer()
     estado_inicial = generate_initial_state(problema, sol)
-    print(estado_inicial)
-    print("Coste sol inicial: " , estado_inicial.calcular_cost())
-    print("Calcul de felicitat ",estado_inicial.happiness())
+    end = timer()
+    print('Tiempo de generación de estado inicial (ms):',(end - start)*1000)
+    #print(estado_inicial)
+    
+    
     #estado_inicial.detalles()
+    start = timer()
     n = hill_climbing ( Azamon( estado_inicial ) )
-    print ( n ) # Estat final
-    print ( n . heuristic1() ) # Valor de l’estat final
-    n.detalles()
-end = timer()
-print(end - start)
+    end = timer()
+    print('Tiempo que tardo en encontrar solución (ms):',(end - start)*1000)
+    #print ( n ) # Estat final
+    #print ( n.heuristic1() ) # Valor de l’estat final
+    
+    
+    #n.detalles()
+    print("Coste sol inicial: " , estado_inicial.calcular_cost())
+    print("Coste sol final: " , n.calcular_cost())
+    print("Calcul de felicitat inicial: ",estado_inicial.happiness())
+    print("Calcul de felicitat final: ",n.happiness())

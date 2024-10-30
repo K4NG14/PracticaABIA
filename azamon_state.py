@@ -5,7 +5,7 @@ import random
 from cmath import log
 from typing import List, Set, Generator
 
-from azamon_operators import AzamonOperator, MoveParcel, SwapParcels
+from azamon_operators import AzamonOperator, MoveParcel, Swap_2smalls_1big, SwapParcels
 from azamon_problem_parameters import ProblemParameters
 from abia_azamon import *
 from copy import deepcopy
@@ -23,10 +23,10 @@ class StateRepresentation(object):
 
     def detalles(self) -> StateRepresentation:
         for oferta_id in range(len(self.v_o)):
-            print(self.params.ofertas[oferta_id])
+            print(oferta_id,self.params.ofertas[oferta_id])
             peso=0.0
             for paquete_id in self.v_o[oferta_id]:
-                print(self.params.packages[paquete_id])
+                print(paquete_id,self.params.packages[paquete_id])
                 peso += self.params.packages[paquete_id].peso
             print(peso)
 
@@ -41,6 +41,18 @@ class StateRepresentation(object):
                 return o_i
 
     def generate_actions(self) -> Generator[AzamonOperator, None, None]:
+        
+
+        def asignable(prioridad, dias):
+            return not ((prioridad != 0 or dias != 1)
+                        and (prioridad != 1 or dias != 2)
+                        and (prioridad != 1 or dias != 3)
+                        and (prioridad != 2 or dias != 4)
+                        and (prioridad != 2 or dias != 5))
+        
+
+
+
         maxWeight = []
         for oferta_id in range(len(self.v_o)):
             maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
@@ -65,11 +77,139 @@ class StateRepresentation(object):
                 
                 #Generar los movimientos posibles de los paquetes
                 for i in range(len(self.v_o)):
+                    #print(dias_paq)
                     if self.params.packages[paquete_id].peso <= free_spaces[i][0] and self.params.ofertas[i].dias in dias_paq:
                         if i != oferta_id:
+                            #print('generate_actions: voy a mover',paquete_id,oferta_id,i)
                             yield MoveParcel(paquete_id,oferta_id,i)   
-
+                
                 #Generar los intercambios posibles entre los paquetes
+                for i in range(len(self.v_o)):
+                    for p_id in self.v_o[i]:
+                        if paquete_id != p_id and oferta_id != i:
+                            prioridad_paq1 = self.params.packages[p_id].prioridad
+                            dias_paq1 = ()
+                            if prioridad_paq1 == 0:
+                                dias_paq1 = (1,)
+                            if prioridad_paq1 == 1:
+                                dias_paq1 = (1,2,3)
+                            if prioridad_paq1 == 2:
+                                dias_paq1 = (1,2,3,4,5) 
+
+                            #print(self.params.ofertas[i].dias,dias_paq,self.params.ofertas[oferta_id].dias, dias_paq1)
+
+                            if self.params.ofertas[i].dias in dias_paq and self.params.ofertas[oferta_id].dias in dias_paq1:
+                                #print(free_spaces[oferta_id][0],self.params.packages[paquete_id].peso,self.params.packages[p_id].peso,free_spaces[i][0] ,self.params.packages[p_id].peso, self.params.packages[paquete_id].peso)
+                                if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso:
+                                    #print('generate_actions: voy a swapear',paquete_id, p_id, oferta_id, i)
+                                    yield SwapParcels(paquete_id, p_id, oferta_id, i)
+
+
+                # Generar los intercambios de 2smalls 1 big
+                for o in range(len(self.v_o)): # mirar en otra oferta
+                    if oferta_id != o: # que no sea la misma oferta
+                        list_paq=list(self.v_o[o]) # hacer una lista del set, con los id de los paquetes del set
+                        #print ("swap2: ", oferta_id, paquete_id, o, list_paq)
+                        for i in range(len(list_paq)): # por un paquete
+                            for j in range(i,len(list_paq)): #miro todos los paquetes
+                                if i != j: # que no sea el mismo paquete
+                                    # miro que sean asignables a la otra oferta con función aux asignable()
+                                    #print('swap2**',i,list_paq[i],list_paq[j],j,o)
+                                    if asignable(self.params.packages[list_paq[i]].prioridad,self.params.ofertas[oferta_id].dias) and asignable(self.params.packages[list_paq[j]].prioridad,self.params.ofertas[oferta_id].dias) and  asignable(self.params.packages[paquete_id].prioridad,self.params.ofertas[o].dias):
+                                        # miro si al quitar los dos paquetes de la oferta cabe el paquete grande y viceversa
+                                        if (free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[list_paq[i]].peso + self.params.packages[list_paq[j]].peso) and (free_spaces[o][0] + self.params.packages[list_paq[i]].peso + self.params.packages[list_paq[j]].peso >= self.params.packages[paquete_id].peso):
+                                            #print('generate_actions: voy a swapear2',list_paq[i],list_paq[j],paquete_id,o,oferta_id)
+                                            #print('generate_actions: detalles')
+                                            #print (self.detalles())
+                                            #print('generate_actions: fin detalles')
+                                            yield Swap_2smalls_1big(list_paq[i],list_paq[j],paquete_id,o,oferta_id)
+
+    def apply_action(self, action: AzamonOperator) -> StateRepresentation:
+        new_state = self.copy()
+
+        
+        if isinstance(action, MoveParcel):
+            p_i = action.p_i
+            c_j = action.c_j
+            c_k = action.c_k
+
+            new_state.v_o[c_k].add(p_i)
+            new_state.v_o[c_j].remove(p_i)
+
+            #print("MOVED ", p_i ,"-> Contenedor ", c_k, new_state.v_o[c_k],",", c_j, new_state.v_o[c_j])
+
+       
+        elif isinstance(action, SwapParcels):
+            p_i = action.p_i
+            p_j = action.p_j
+
+            c_i = action.c_i
+            c_j = action.c_j
+
+            new_state.v_o[c_j].add(p_i)
+            new_state.v_o[c_i].remove(p_i)
+
+            new_state.v_o[c_i].add(p_j)
+            new_state.v_o[c_j].remove(p_j)
+
+            #print("SWAPPED ", p_i, " y ", p_j ,"-> ", new_state.v_o[c_i], new_state.v_o[c_j])
+
+        elif isinstance(action, Swap_2smalls_1big):
+            p_i = action.p_i
+            p_j = action.p_j
+            p_g = action.p_g
+
+            c_ij = action.c_ij
+            c_g = action.c_g
+            #print("SWAPPED2 ", p_i, p_j," y ", p_g ,"-> ", new_state.v_o[c_ij], new_state.v_o[c_g])
+            
+            new_state.v_o[c_g].add(p_i)
+            new_state.v_o[c_g].add(p_j)
+            new_state.v_o[c_ij].remove(p_i)
+            new_state.v_o[c_ij].remove(p_j)
+
+            new_state.v_o[c_ij].add(p_g)
+            new_state.v_o[c_g].remove(p_g)
+            
+
+
+
+            
+        return new_state
+    
+    def generate_one_action(self) -> Generator[AzamonOperator, None, None]:
+        maxWeight = []
+        for oferta_id in range(len(self.v_o)):
+            maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
+        #print(maxWeight)
+        free_spaces = maxWeight
+
+        for oferta_id in range(len(self.v_o)):
+            for paquete_id in self.v_o[oferta_id]:
+                free_spaces[oferta_id][0] -= self.params.packages[paquete_id].peso
+        #print(free_spaces)
+
+        for oferta_id in range(len(self.v_o)):
+            for paquete_id in self.v_o[oferta_id]:
+                prioridad_paq = self.params.packages[paquete_id].prioridad
+                dias_paq = ()
+                if prioridad_paq == 0:
+                    dias_paq = (1,)
+                if prioridad_paq == 1:
+                    dias_paq = (1,2,3)
+                if prioridad_paq == 2:
+                    dias_paq = (1,2,3,4,5)
+                
+                #Generar los movimientos posibles de los paquetes
+                move_parcel_combinations = set()
+                for i in range(len(self.v_o)):
+                    #print(dias_paq)
+                    if self.params.packages[paquete_id].peso <= free_spaces[i][0] and self.params.ofertas[i].dias in dias_paq:
+                        if i != oferta_id:
+                          move_parcel_combinations.add((paquete_id,oferta_id,i))     
+                
+                #Generar los intercambios posibles entre los paquetes
+                swap_parcels_combinations = set()
                 for i in range(len(self.v_o)):
                     for p_id in self.v_o[i]:
                         if paquete_id != p_id and oferta_id != i:
@@ -84,74 +224,10 @@ class StateRepresentation(object):
                             
                             if self.params.ofertas[i].dias in dias_paq and self.params.ofertas[oferta_id] in dias_paq1:
                                 if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso  :
-                                    yield SwapParcels(paquete_id, p_id, oferta_id, i)
+                                    swap_parcels_combinations.add(paquete_id, p_id)
+      
 
-    def apply_action(self, action: AzamonOperator) -> StateRepresentation:
-        new_state = self.copy()
-
-
-        if isinstance(action, MoveParcel):
-            p_i = action.p_i
-            c_j = action.c_j
-            c_k = action.c_k
-
-            new_state.v_o[c_k].add(p_i)
-            new_state.v_o[c_j].remove(p_i)
-
-            #print("MOVED ", p_i ,"-> Contenedor ", c_k, new_state.v_o[c_k],",", c_j, new_state.v_o[c_j])
-
-
-        elif isinstance(action, SwapParcels):
-            p_i = action.p_i
-            p_j = action.p_j
-
-            c_i = action.c_i
-            c_j = action.c_j
-
-            new_state.v_o[c_j].add(p_i)
-            new_state.v_o[c_i].remove(p_i)
-
-            new_state.v_o[c_i].add(p_j)
-            new_state.v_o[c_j].remove(p_j)
-            
-
-            #print("SWAPPED ", p_i, " y ", p_j ,"-> ", new_state.v_o[c_i], new_state.v_o[c_j])
-        return new_state
-    def generate_one_action(self) -> Generator[AzamonOperator, None, None]:
-        # Primer calculem l'espai lliure de cada contenidor
-        free_spaces = []
-        for c_i, parcels in enumerate(self.v_c):
-            h_c_i = self.params.h_max
-            for p_i in parcels:
-                h_c_i = h_c_i - self.params.v_h[p_i]
-            free_spaces.append(h_c_i)
-
-        # Recorregut contenidor per contenidor per saber quins paquets podem moure
-        move_parcel_combinations = set()
-        for c_j, parcels in enumerate(self.v_c):
-            for p_i in parcels:
-                for c_k in range(len(self.v_c)):
-                    # Condició: contenidor diferent i té espai lliure suficient
-                    if c_j != c_k and free_spaces[c_k] >= self.params.v_h[p_i]:
-                        move_parcel_combinations.add((p_i, c_j, c_k))
-
-        # Intercanviar paquets
-        swap_parcels_combinations = set()
-        for p_i in range(self.params.p_max):
-            for p_j in range(self.params.p_max):
-                if p_i != p_j:
-                    c_i = self.find_container(p_i)
-                    c_j = self.find_container(p_j)
-
-                    if c_i != c_j:
-                        h_p_i = self.params.v_h[p_i]
-                        h_p_j = self.params.v_h[p_j]
-
-                        # Condició: hi ha espai lliure suficient per fer l'intercanvi
-                        # (Espai lliure del contenidor + espai que deixa el paquet >= espai del nou paquet)
-                        if free_spaces[c_i] + h_p_i >= h_p_j and free_spaces[c_j] + h_p_j >= h_p_i:
-                            swap_parcels_combinations.add((p_i, p_j))
-
+       
         n = len(move_parcel_combinations)
         m = len(swap_parcels_combinations)
         random_value = random.random()
@@ -175,9 +251,11 @@ class StateRepresentation(object):
             for paquete_id in self.v_o[oferta_id]:
                 sum += self.params.packages[paquete_id].peso
                 occupancy = sum/self.params.ofertas[oferta_id].pesomax
-                print(occupancy)
+                #print('o',occupancy)
             h+=(occupancy)*log(occupancy)
-            print(h)
+            #print('h',h)
+            h=h.real
+            #print('h',h)
         return -h
     
     def heuristic4(self) -> float:
@@ -186,7 +264,7 @@ class StateRepresentation(object):
 
     def calcular_cost(self):
         #print(self.v_o)
-        cost = 0
+        cost = 0.0
         for elem in range(len(self.v_o)):
             if len(self.v_o[elem]) > 0:
                 for id_paq in self.v_o[elem]:
@@ -302,8 +380,9 @@ def crear_asignacion_1(l_paquetes, l_ofertas):
     v_o = assignar1(oferta_por_paquete, len(l_ofertas))
     return v_o
 
+
 def crear_asignacion_2 (l_paq, l_ofe):  
-    def assignable (paq = Paquete, dies = int):
+    def assignable (paq = Paquete, dies = int): #Definim les condicions que ha de tenir cada Paquet en funció de la seva prioritat
        if paq.prioridad == 0:
            return dies == 1
        if paq.prioridad == 1:
@@ -316,36 +395,32 @@ def crear_asignacion_2 (l_paq, l_ofe):
         prio1 = []
         prio2 = []
         
-        for i in range(len(l_paq)):
+        for i in range(len(l_paq)): #Dividim els paquets en tres llistes, una per cada prioritat
             if l_paq[i].prioridad == 0:
-                prio0.append((l_paq[i], i))
+                prio0.append((l_paq[i], i)) #Ens guardem la instància de Paquet i el seu índex a la llista original abans d'ordenar-la amb una tupla
             elif l_paq[i].prioridad == 1:
                 prio1.append((l_paq[i], i))
             elif l_paq[i].prioridad == 2:
                 prio2.append((l_paq[i], i))
-        
-        prio0_ord = sorted(prio0, key=lambda x: x[0].peso, reverse=True)
-        prio1_ord = sorted(prio1, key=lambda x: x[0].peso, reverse=True)
-        prio2_ord = sorted(prio2, key=lambda x: x[0].peso, reverse=True)
-        
-        res = prio0_ord + prio1_ord + prio2_ord
-        return res
-    
+
+        res = (prio0, prio1, prio2) #Juntem les tres llistes en una tupla
+        return res 
 
     def assignar(l_paquets = list[Paquete], l_ofe = list[Oferta]):
         l_paq = ordenar(l_paquets)
-        l_ofe_copy = deepcopy(l_ofe)
-        lst = [set() for _ in range (len(l_ofe_copy))]
-        l = [set() for _ in range (len(l_ofe_copy))]
-        for id_paquet in range(len(l_paq)):
-            for ofert in range(len(l_ofe_copy)): 
-                if l_paq[id_paquet][0].peso <= l_ofe_copy[ofert].pesomax and assignable(l_paq[id_paquet][0], l_ofe_copy[ofert].dias):
-                    lst[ofert].add(l_paq[id_paquet][1])
-                    l[ofert].add((l_paq[id_paquet][1], l_paquets[l_paq[id_paquet][1]].peso, l_paquets[l_paq[id_paquet][1]].prioridad))
-                    l_ofe_copy[ofert].pesomax -= l_paq[id_paquet][0].peso
-                    break
-        print(f'list:{l}')
-        llargada = 0
+        l_ofe_copy = deepcopy(l_ofe) #Fem una còpia per no modificar l'original
+        lst = [set() for _ in range (len(l_ofe_copy))] #Creem una llista de sets
+        for i in range(3):
+            for _ in range(len(l_paq[i])): #Recorrem la llista de paquets ordenada
+                id_paquet = max(l_paq[i], key=lambda x: x[1])
+                l_paq[i].remove(id_paquet)
+                for ofert in range(len(l_ofe_copy)):
+                    if id_paquet[0].peso <= l_ofe_copy[ofert].pesomax and assignable(id_paquet[0], l_ofe_copy[ofert].dias): #Comprovem que el pes disponible de la oferta és menor al del paquet i els dies d'entrega estan dins de la prioritat del paquet
+                        lst[ofert].add(id_paquet[1]) #Afegim l'índex del paquet al set de la oferta
+                        l_ofe_copy[ofert].pesomax -= id_paquet[0].peso #Restem el pes del paquet al pes disponible de l'oferta
+                        break #Passem al següent paquet
+
+        llargada = 0 #Comprovem que tots els paquets han sigut assignats
         for e in lst:
             llargada += len(e)
         if llargada != len(l_paquets):
@@ -353,5 +428,4 @@ def crear_asignacion_2 (l_paq, l_ofe):
         else:
             return lst
     v_o = assignar(l_paq, l_ofe)
-    return v_o
-
+    return v_o #Retornem la llista de sets amb els índexsos dels paquets
