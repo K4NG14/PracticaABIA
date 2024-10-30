@@ -15,6 +15,7 @@ class StateRepresentation(object):
     def __init__(self, params: ProblemParameters, v_o: List[Set[int]]):
         self.params = params
         self.v_o = v_o
+        self.contador = 0
 
     def copy(self) -> StateRepresentation:
         # Afegim el copy per cada set!
@@ -173,7 +174,7 @@ class StateRepresentation(object):
             
 
 
-
+        self.contador += 1
             
         return new_state
     

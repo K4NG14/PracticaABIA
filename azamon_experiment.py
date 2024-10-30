@@ -1,7 +1,5 @@
 from typing import Generator
-
 from aima.search import Problem
-
 from azamon_operators import AzamonOperator
 from azamon_state import StateRepresentation
 from aima . search import hill_climbing, simulated_annealing
@@ -39,7 +37,7 @@ if __name__ == '__main__':
     n = hill_climbing ( Azamon( estado_inicial ) )
     end = timer()
     print('Tiempo que tardo en encontrar solución (ms):',(end - start)*1000)
-    #print ( n ) # Estat final
+    print ('Pasos: ', n.contador ) # Estat final
     #print ( n.heuristic1() ) # Valor de l’estat final
     
     
