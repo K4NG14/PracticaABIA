@@ -17,7 +17,7 @@ class Azamon(Problem):
         return state.apply_action(action)
 
     def value(self, state: StateRepresentation) -> float:
-        return -state.heuristic1()
+        return -state.heuristic2()
 
     def goal_test(self, state: StateRepresentation) -> bool:
         return False

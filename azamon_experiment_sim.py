@@ -21,7 +21,8 @@ if __name__ == '__main__':
     semilla = int(input("Semilla aleatoria: "))
     paquetes = random_paquetes(npaq, semilla)
     ofertas = random_ofertas(paquetes, 1.2, 1234)
-    sol = int(input("Solució inicial (1-Cost Mínim, 2-Pes Màxim Paquet Preferent): "))    
+    sol = int(input("Solució inicial (1-Mikel, 2-Elias): "))
+    
     
     #inspeccionar_paquetes(paquetes)
     #inspeccionar_ofertas(ofertas)
@@ -35,7 +36,7 @@ if __name__ == '__main__':
     
     #estado_inicial.detalles()
     start = timer()
-    n = hill_climbing ( Azamon( estado_inicial ) )
+    n = simulated_annealing ( Azamon( estado_inicial ) )
     end = timer()
     print('Tiempo que tardo en encontrar solución (ms):',(end - start)*1000)
     print ('Pasos: ', n.contador ) # Estat final

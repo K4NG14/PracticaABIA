@@ -40,6 +40,8 @@ class StateRepresentation(object):
         for o_i in range(len(self.v_o)):
             if p_i in self.v_o[o_i]:
                 return o_i
+    
+
 
     def generate_actions(self) -> Generator[AzamonOperator, None, None]:
         
@@ -174,11 +176,12 @@ class StateRepresentation(object):
             
 
 
-        self.contador += 1
+        self.contador += 1 
             
         return new_state
     
     def generate_one_action(self) -> Generator[AzamonOperator, None, None]:
+        
         maxWeight = []
         for oferta_id in range(len(self.v_o)):
             maxWeight.append([self.params.ofertas[oferta_id].pesomax, self.params.ofertas[oferta_id].dias])
@@ -227,10 +230,12 @@ class StateRepresentation(object):
                                 if free_spaces[oferta_id][0] + self.params.packages[paquete_id].peso >= self.params.packages[p_id].peso and free_spaces[i][0] + self.params.packages[p_id].peso >= self.params.packages[paquete_id].peso  :
                                     swap_parcels_combinations.add(paquete_id, p_id)
       
-
+               
+                                            
        
         n = len(move_parcel_combinations)
         m = len(swap_parcels_combinations)
+        
         random_value = random.random()
         if random_value < (n / (n + m)):
             combination = random.choice(list(move_parcel_combinations))
@@ -243,7 +248,10 @@ class StateRepresentation(object):
         return self.calcular_cost()
     
     def heuristic2(self) -> float:
-        return self.happiness() #hace falta ponerle un peso a happiness
+        weight_happiness = 0.8  
+        cost = self.calcular_cost()  
+        happiness = self.happiness() 
+        return cost - (weight_happiness * happiness)
     
     def heuristic3(self) -> float:
         h=0.0
